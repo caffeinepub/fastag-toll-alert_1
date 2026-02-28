@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useBalance, useRecharge, useSetBalance } from "../hooks/useQueries";
+import { useActor } from "../hooks/useActor";
 
 const QUICK_AMOUNTS = [200, 500, 1000, 2000];
 
@@ -12,6 +13,8 @@ export function RechargeTab() {
   const { data: balance = 0 } = useBalance();
   const rechargeMut = useRecharge();
   const setBalanceMut = useSetBalance();
+  const { actor, isFetching: actorLoading } = useActor();
+  const actorReady = !!actor && !actorLoading;
 
   const [amount, setAmount] = useState("");
   const [setMode, setSetMode] = useState(false);
@@ -48,7 +51,6 @@ export function RechargeTab() {
     }
   };
 
-  // Only block button during active mutation -- actor connection is handled internally
   const isPending = rechargeMut.isPending || setBalanceMut.isPending;
 
   const balanceColor =
@@ -168,10 +170,15 @@ export function RechargeTab() {
 
         <Button
           onClick={setMode ? handleSetBalance : handleRecharge}
-          disabled={isPending || !amount}
+          disabled={isPending || !amount || !actorReady}
           className="mt-4 w-full h-12 font-rajdhani text-base font-bold tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
         >
-          {isPending ? (
+          {!actorReady ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              CONNECTING...
+            </>
+          ) : isPending ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
               {setMode ? "Updating..." : "Recharging..."}
