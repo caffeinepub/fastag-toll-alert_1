@@ -1,12 +1,21 @@
-import React, { useState, useEffect } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { LayoutDashboard, Zap, History, Radio, ShieldCheck, Bell, BellOff, X } from "lucide-react";
-import { DashboardTab } from "./components/DashboardTab";
-import { RechargeTab } from "./components/RechargeTab";
-import { HistoryTab } from "./components/HistoryTab";
-import { useWakeLock } from "./hooks/useWakeLock";
-import { useActorSync, useActorRegistry } from "./hooks/useQueries";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
+import {
+  Bell,
+  BellOff,
+  History,
+  LayoutDashboard,
+  Radio,
+  ShieldCheck,
+  X,
+  Zap,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { DashboardTab } from "./components/DashboardTab";
+import { HistoryTab } from "./components/HistoryTab";
+import { RechargeTab } from "./components/RechargeTab";
+import { useActorRegistry, useActorSync } from "./hooks/useQueries";
+import { useWakeLock } from "./hooks/useWakeLock";
 
 type Tab = "dashboard" | "recharge" | "history";
 
@@ -25,11 +34,11 @@ export default function App() {
   useActorRegistry();
 
   // Notification permission state
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">(
-    "Notification" in window ? Notification.permission : "unsupported"
-  );
+  const [notifPermission, setNotifPermission] = useState<
+    NotificationPermission | "unsupported"
+  >("Notification" in window ? Notification.permission : "unsupported");
   const [notifBannerDismissed, setNotifBannerDismissed] = useState(
-    () => localStorage.getItem("notif_banner_dismissed") === "1"
+    () => localStorage.getItem("notif_banner_dismissed") === "1",
   );
 
   // Poll permission state in case it changes externally
@@ -234,11 +243,10 @@ export default function App() {
               borderColor: "oklch(0.65 0.24 25 / 0.4)",
             }}
           >
-            <BellOff
-              className="w-4 h-4 shrink-0 text-destructive"
-            />
+            <BellOff className="w-4 h-4 shrink-0 text-destructive" />
             <span className="text-xs text-destructive flex-1">
-              Notifications blocked. Enable in phone Settings &gt; Apps &gt; FASTag Toll Alert &gt; Notifications
+              Notifications blocked. Enable in phone Settings &gt; Apps &gt;
+              FASTag Toll Alert &gt; Notifications
             </span>
             <button
               type="button"
@@ -282,7 +290,11 @@ export default function App() {
                   className="w-5 h-5 transition-all"
                   style={
                     isActive
-                      ? { color: "oklch(0.82 0.18 195)", filter: "drop-shadow(0 0 6px oklch(0.82 0.18 195 / 0.6))" }
+                      ? {
+                          color: "oklch(0.82 0.18 195)",
+                          filter:
+                            "drop-shadow(0 0 6px oklch(0.82 0.18 195 / 0.6))",
+                        }
                       : { color: "oklch(0.5 0.02 240)" }
                   }
                 />

@@ -1,10 +1,10 @@
-import React from "react";
-import { toast } from "sonner";
-import { Clock, MapPin, Trash2, Loader2, Receipt } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { useTransactions, useClearTransactions } from "../hooks/useQueries";
+import { Clock, Loader2, MapPin, Receipt, Trash2 } from "lucide-react";
+import React from "react";
+import { toast } from "sonner";
+import { useClearTransactions, useTransactions } from "../hooks/useQueries";
 
 function formatTimestamp(ts: bigint): string {
   // Backend timestamp is in nanoseconds (ICP Time.now())
@@ -33,13 +33,13 @@ export function HistoryTab() {
   };
 
   // Sort newest first
-  const sorted = [...transactions].sort(
-    (a, b) => Number(b.timestamp - a.timestamp)
+  const sorted = [...transactions].sort((a, b) =>
+    Number(b.timestamp - a.timestamp),
   );
 
   const totalSpent = sorted.reduce(
     (sum, t) => sum + Number(t.amountDeducted),
-    0
+    0,
   );
 
   return (

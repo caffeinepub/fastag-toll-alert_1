@@ -1,6 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState } from "react";
-import { toast } from "sonner";
-import { MapPin, Navigation, AlertTriangle, BellOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -9,27 +7,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Speedometer } from "./Speedometer";
-import { useGeolocation } from "../hooks/useGeolocation";
-import { useBeep } from "../hooks/useBeep";
 import {
-  useBalance,
-  useVehicleType,
-  useSetVehicleType,
-  useDeductToll,
-  useTollPlazas,
+  AlertTriangle,
+  BellOff,
+  MapPin,
+  Navigation,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useBeep } from "../hooks/useBeep";
+import { useGeolocation } from "../hooks/useGeolocation";
+import {
   useAddTollPlaza,
+  useBalance,
+  useDeductToll,
+  useSetVehicleType,
+  useTollPlazas,
+  useVehicleType,
 } from "../hooks/useQueries";
 import { haversine } from "../utils/haversine";
-import { TOLL_PLAZAS_DATA, VEHICLE_TYPES, getTollRate, toBackendTollPlaza } from "../utils/tollData";
+import {
+  TOLL_PLAZAS_DATA,
+  VEHICLE_TYPES,
+  getTollRate,
+  toBackendTollPlaza,
+} from "../utils/tollData";
+import { Speedometer } from "./Speedometer";
 
 // Recently deducted tolls: id → timestamp (ms)
 const recentlyDeducted = new Map<string, number>();
 const DEDUCT_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 const AUTO_DEDUCT_RADIUS_KM = 0.2; // 200 meters
 const ALERT_RADIUS_KM = 5.0;
-const SEEDS_KEY = "tolls_seeded_v7_gps_fixed";
+const SEEDS_KEY = "tolls_seeded_v8_reinstall";
 
 function sendNotification(title: string, body: string) {
   if ("Notification" in window && Notification.permission === "granted") {
@@ -43,16 +56,19 @@ function sendNotification(title: string, body: string) {
 
 export function DashboardTab() {
   const geo = useGeolocation();
-  const { isBeeping, muted, startBeeping, stopBeeping, silenceBeep } = useBeep();
+  const { isBeeping, muted, startBeeping, stopBeeping, silenceBeep } =
+    useBeep();
   const { data: balance = 0, refetch: refetchBalance } = useBalance();
   const { data: vehicleType = "Car/Jeep/Van" } = useVehicleType();
   const setVehicleTypeMut = useSetVehicleType();
   const deductTollMut = useDeductToll();
-  const { data: tollPlazas = [], isLoading: plazasLoading } = useTollPlazas();
+  const { isLoading: plazasLoading } = useTollPlazas();
   const addTollPlazaMut = useAddTollPlaza();
 
   // Interpolated distance — smoothly counts down using speed between GPS fixes
-  const [interpolatedDistance, setInterpolatedDistance] = useState<number | null>(null);
+  const [interpolatedDistance, setInterpolatedDistance] = useState<
+    number | null
+  >(null);
   const interpRef = useRef<{
     baseDistKm: number;
     speedKmh: number;
@@ -76,7 +92,7 @@ export function DashboardTab() {
       try {
         // addTollPlaza upserts by ID — this overwrites any old wrong coordinates
         await Promise.all(
-          TOLL_PLAZAS_DATA.map((p) => mutateAsync(toBackendTollPlaza(p)))
+          TOLL_PLAZAS_DATA.map((p) => mutateAsync(toBackendTollPlaza(p))),
         );
         localStorage.setItem(SEEDS_KEY, "1");
       } catch (e) {
@@ -95,23 +111,33 @@ export function DashboardTab() {
   const activePlazas = TOLL_PLAZAS_DATA;
 
   // Find nearest toll plaza (raw GPS distance)
-  const nearestTollGps = React.useMemo(() => {
+  const nearestTollGps = useMemo(() => {
     if (geo.latitude === null || geo.longitude === null) return null;
 
-    let nearest: { plaza: (typeof activePlazas)[number]; distanceKm: number } | null = null;
+    let nearest: {
+      plaza: (typeof activePlazas)[number];
+      distanceKm: number;
+    } | null = null;
 
     for (const plaza of activePlazas) {
-      const dist = haversine(geo.latitude, geo.longitude, plaza.latitude, plaza.longitude);
+      const dist = haversine(
+        geo.latitude,
+        geo.longitude,
+        plaza.latitude,
+        plaza.longitude,
+      );
       if (!nearest || dist < nearest.distanceKm) {
         nearest = { plaza, distanceKm: dist };
       }
     }
     return nearest;
-  }, [geo.latitude, geo.longitude]);
+  }, [geo.latitude, geo.longitude, activePlazas]);
 
   // Keep a ref of current speed so the interval can read it without re-subscribing
   const speedRef = useRef(geo.speed);
-  useEffect(() => { speedRef.current = geo.speed; }, [geo.speed]);
+  useEffect(() => {
+    speedRef.current = geo.speed;
+  }, [geo.speed]);
 
   // Track previous GPS distance to compute per-fix speed when device speed = 0
   const prevGpsDistRef = useRef<{ distKm: number; time: number } | null>(null);
@@ -168,9 +194,10 @@ export function DashboardTab() {
     const id = setInterval(() => {
       if (!interpRef.current) return;
       // Always read the latest speed (updates as GPS reports new speed)
-      const spd = interpRef.current.speedKmh > 0
-        ? interpRef.current.speedKmh
-        : speedRef.current;
+      const spd =
+        interpRef.current.speedKmh > 0
+          ? interpRef.current.speedKmh
+          : speedRef.current;
       const elapsedHr = (Date.now() - interpRef.current.startTime) / 3_600_000;
       const traveled = spd * elapsedHr;
       const remaining = Math.max(0, interpRef.current.baseDistKm - traveled);
@@ -187,7 +214,10 @@ export function DashboardTab() {
   const nearestToll = nearestTollGps
     ? {
         ...nearestTollGps,
-        distanceKm: interpolatedDistance !== null ? interpolatedDistance : nearestTollGps.distanceKm,
+        distanceKm:
+          interpolatedDistance !== null
+            ? interpolatedDistance
+            : nearestTollGps.distanceKm,
       }
     : null;
 
@@ -198,8 +228,7 @@ export function DashboardTab() {
   const isApproaching =
     nearestToll !== null && nearestToll.distanceKm <= ALERT_RADIUS_KM;
 
-  const isLowBalance =
-    isApproaching && balance < tollAmount;
+  const isLowBalance = isApproaching && balance < tollAmount;
 
   // Beep ONLY when approaching within 5km AND balance is insufficient
   const needsBeep = isApproaching && isLowBalance;
@@ -255,7 +284,7 @@ export function DashboardTab() {
           toast.success(`Toll deducted: ₹${tollAmount} at ${plaza.name}`);
           sendNotification(
             "FASTag Toll Alert",
-            `Toll paid at ${plaza.name}. Remaining balance: ₹${newBal}`
+            `Toll paid at ${plaza.name}. Remaining balance: ₹${newBal}`,
           );
           refetchBalance();
           stopBeeping();
@@ -267,14 +296,24 @@ export function DashboardTab() {
       .catch(() => {
         deductingRef.current.delete(plaza.id);
       });
-  }, [geo.latitude, geo.longitude, nearestToll, vehicleType, balance, tollAmount, deductTollMut, refetchBalance, stopBeeping]);
+  }, [
+    geo.latitude,
+    geo.longitude,
+    nearestToll,
+    vehicleType,
+    balance,
+    tollAmount,
+    deductTollMut,
+    refetchBalance,
+    stopBeeping,
+  ]);
 
   const balanceColor =
     balance > 500
       ? "text-balance-green glow-green"
       : balance > 100
-      ? "text-balance-yellow glow-yellow"
-      : "text-balance-red glow-red";
+        ? "text-balance-yellow glow-yellow"
+        : "text-balance-red glow-red";
 
   return (
     <div className="flex flex-col gap-3 pb-4">
@@ -291,7 +330,9 @@ export function DashboardTab() {
             {vehicleType}
           </Badge>
         </div>
-        <div className={`font-mono-jb text-5xl font-bold tracking-tight ${balanceColor}`}>
+        <div
+          className={`font-mono-jb text-5xl font-bold tracking-tight ${balanceColor}`}
+        >
           ₹{balance.toLocaleString("en-IN")}
         </div>
         <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -303,8 +344,8 @@ export function DashboardTab() {
                 balance > 500
                   ? "oklch(0.72 0.2 145)"
                   : balance > 100
-                  ? "oklch(0.78 0.18 75)"
-                  : "oklch(0.65 0.24 25)",
+                    ? "oklch(0.78 0.18 75)"
+                    : "oklch(0.65 0.24 25)",
             }}
           />
         </div>
@@ -321,7 +362,9 @@ export function DashboardTab() {
       {!geo.error && geo.isAcquiring && (
         <div className="card-glass rounded-xl p-3 flex items-center gap-2 border border-primary/20">
           <RefreshCw className="w-4 h-4 text-primary animate-spin shrink-0" />
-          <span className="text-sm text-muted-foreground">Acquiring GPS signal...</span>
+          <span className="text-sm text-muted-foreground">
+            Acquiring GPS signal...
+          </span>
         </div>
       )}
 
@@ -339,24 +382,36 @@ export function DashboardTab() {
       {isApproaching && (
         <div
           className={`card-glass rounded-xl p-4 border-glow-red approaching-alert ${
-            isLowBalance ? "border border-destructive/60" : "border border-yellow-500/40"
+            isLowBalance
+              ? "border border-destructive/60"
+              : "border border-yellow-500/40"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle
               className={`w-5 h-5 shrink-0 ${isLowBalance ? "text-destructive" : "text-yellow-400"}`}
             />
-            <span className={`font-rajdhani font-bold text-base tracking-wide ${isLowBalance ? "text-destructive" : "text-yellow-400"}`}>
-              {isLowBalance ? "LOW BALANCE — TOLL APPROACHING" : "TOLL APPROACHING"}
+            <span
+              className={`font-rajdhani font-bold text-base tracking-wide ${isLowBalance ? "text-destructive" : "text-yellow-400"}`}
+            >
+              {isLowBalance
+                ? "LOW BALANCE — TOLL APPROACHING"
+                : "TOLL APPROACHING"}
             </span>
           </div>
           <div className="text-sm text-foreground/80">
             <span className="font-semibold">{nearestToll?.plaza.name}</span>
-            <span className="text-muted-foreground"> · {nearestToll?.plaza.highway}</span>
+            <span className="text-muted-foreground">
+              {" "}
+              · {nearestToll?.plaza.highway}
+            </span>
           </div>
           <div className="flex items-center justify-between mt-2">
             <span className="text-xs text-muted-foreground">
-              Required: <span className="text-foreground font-mono-jb font-bold">₹{tollAmount}</span>
+              Required:{" "}
+              <span className="text-foreground font-mono-jb font-bold">
+                ₹{tollAmount}
+              </span>
             </span>
             {isLowBalance && (
               <span className="text-xs text-destructive font-semibold">
@@ -407,7 +462,10 @@ export function DashboardTab() {
                   {nearestToll.plaza.name}
                 </span>
               </div>
-              <Badge variant="outline" className="self-start text-xs border-primary/30 text-primary font-mono-jb">
+              <Badge
+                variant="outline"
+                className="self-start text-xs border-primary/30 text-primary font-mono-jb"
+              >
                 {nearestToll.plaza.highway}
               </Badge>
               <div className="mt-auto">
@@ -420,7 +478,10 @@ export function DashboardTab() {
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Toll: <span className="text-foreground font-mono-jb">₹{tollAmount}</span>
+                  Toll:{" "}
+                  <span className="text-foreground font-mono-jb">
+                    ₹{tollAmount}
+                  </span>
                 </div>
               </div>
             </div>
@@ -492,7 +553,12 @@ export function DashboardTab() {
             {activePlazas
               .map((p) => ({
                 ...p,
-                distKm: haversine(geo.latitude!, geo.longitude!, p.latitude, p.longitude),
+                distKm: haversine(
+                  geo.latitude!,
+                  geo.longitude!,
+                  p.latitude,
+                  p.longitude,
+                ),
               }))
               .sort((a, b) => a.distKm - b.distKm)
               .slice(0, 5)
@@ -504,8 +570,12 @@ export function DashboardTab() {
                   <div className="flex items-center gap-2 min-w-0">
                     <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
                     <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">{p.highway}</div>
+                      <div className="text-sm font-medium truncate">
+                        {p.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.highway}
+                      </div>
                     </div>
                   </div>
                   <div className="text-right shrink-0 ml-2">
@@ -514,7 +584,9 @@ export function DashboardTab() {
                         ? `${Math.round(p.distKm * 1000)}m`
                         : `${p.distKm.toFixed(1)}km`}
                     </div>
-                    <div className="text-xs text-muted-foreground">₹{getTollRate(p, vehicleType)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      ₹{getTollRate(p, vehicleType)}
+                    </div>
                   </div>
                 </div>
               ))}

@@ -6,8 +6,8 @@ import Float "mo:core/Float";
 import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
-import Order "mo:core/Order";
 import Int "mo:core/Int";
+import Order "mo:core/Order";
 
 
 
@@ -46,17 +46,17 @@ actor {
     amount : Nat;
   };
 
-  module BalanceEvent {
-    public func compare(l1 : BalanceEvent, l2 : BalanceEvent) : Order.Order {
-      Int.compare(l2.timestamp, l1.timestamp);
-    };
-  };
-
-  var balance = 0;
+  var balance : Nat = 0;
   var vehicleType : Text = "Car/Jeep/Van";
   var pTollPlazas = Map.empty<Text, TollPlaza>();
   var pTransactionHistory = List.empty<Transaction>();
   var pBalanceHistory = List.empty<BalanceEvent>();
+
+  // Legacy stable variable names — kept for upgrade compatibility with old snapshots.
+  // These match what was stored in previous versions and must not be removed.
+  var tollPlazas = Map.empty<Text, TollPlaza>();
+  var transactionHistory = List.empty<Transaction>();
+  var balanceHistory = List.empty<BalanceEvent>();
 
   let vehicleTypes = [
     "Car/Jeep/Van",
@@ -179,6 +179,6 @@ actor {
   };
 
   public query ({ caller }) func getBalanceHistory() : async [BalanceEvent] {
-    pBalanceHistory.toArray().sort();
+    pBalanceHistory.toArray().sort(func(a : BalanceEvent, b : BalanceEvent) : Order.Order { Int.compare(b.timestamp, a.timestamp) });
   };
 };

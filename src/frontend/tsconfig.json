@@ -9,6 +9,8 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -27,7 +29,6 @@
     "node_modules",
     "dist",
     "build",
-    "*.config.js",
-    "eslint-rules/**/*"
+    "*.config.js"
   ]
 }

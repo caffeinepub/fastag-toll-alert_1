@@ -22,7 +22,7 @@ function describeArc(
   cy: number,
   r: number,
   startAngle: number,
-  endAngle: number
+  endAngle: number,
 ) {
   const start = polarToXY(cx, cy, r, startAngle);
   const end = polarToXY(cx, cy, r, endAngle);
@@ -56,8 +56,8 @@ export function Speedometer({ speed, isAcquiring = false }: SpeedometerProps) {
     clampedSpeed < 60
       ? "oklch(0.72 0.2 145)"
       : clampedSpeed < 120
-      ? "oklch(0.78 0.18 75)"
-      : "oklch(0.65 0.24 25)";
+        ? "oklch(0.78 0.18 75)"
+        : "oklch(0.65 0.24 25)";
 
   // Tick marks
   const ticks = Array.from({ length: 21 }, (_, i) => {
@@ -81,6 +81,7 @@ export function Speedometer({ speed, isAcquiring = false }: SpeedometerProps) {
         height="200"
         className="overflow-visible"
         aria-label={`Speedometer showing ${Math.round(clampedSpeed)} km/h`}
+        role="img"
       >
         {/* Background circle */}
         <circle
@@ -124,7 +125,9 @@ export function Speedometer({ speed, isAcquiring = false }: SpeedometerProps) {
               y1={tick.p1.y}
               x2={tick.p2.x}
               y2={tick.p2.y}
-              stroke={tick.isMajor ? "oklch(0.6 0.02 240)" : "oklch(0.35 0.02 250)"}
+              stroke={
+                tick.isMajor ? "oklch(0.6 0.02 240)" : "oklch(0.35 0.02 250)"
+              }
               strokeWidth={tick.isMajor ? 2 : 1}
             />
             {tick.isMajor && tick.val % 40 === 0 && (
@@ -170,7 +173,9 @@ export function Speedometer({ speed, isAcquiring = false }: SpeedometerProps) {
           fontSize="22"
           fontWeight="700"
           fontFamily="JetBrains Mono, monospace"
-          style={{ filter: isAcquiring ? "none" : `drop-shadow(0 0 6px ${speedColor})` }}
+          style={{
+            filter: isAcquiring ? "none" : `drop-shadow(0 0 6px ${speedColor})`,
+          }}
         >
           {isAcquiring ? "---" : Math.round(clampedSpeed)}
         </text>

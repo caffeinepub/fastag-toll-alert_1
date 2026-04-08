@@ -1,15 +1,60 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
-import { useActor } from "./useActor";
-import type { TollPlaza, Transaction, BalanceEvent } from "../backend.d.ts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createActor } from "../backend";
 import { createActorWithConfig } from "../config";
-import type { backendInterface } from "../backend";
+import { useActor } from "./useActor";
 
 /** No-op kept for backward compatibility -- App.tsx imports this. */
 export function useActorSync() {}
 
 /** No-op kept for backward compatibility -- App.tsx imports this. */
 export function useActorRegistry() {}
+
+// ---------------------------------------------------------------------------
+// Local type definitions matching the Motoko backend types.
+// (backend.d.ts is empty because bindgen runs against candid, not source.)
+// ---------------------------------------------------------------------------
+
+export interface TollRates {
+  carJeepVan: bigint;
+  lcv: bigint;
+  busTruck: bigint;
+  multiAxle: bigint;
+  mav: bigint;
+  oversized: bigint;
+}
+
+export interface TollPlaza {
+  id: string;
+  name: string;
+  highway: string;
+  latitude: number;
+  longitude: number;
+  tollRates: TollRates;
+}
+
+export interface Transaction {
+  plazaId: string;
+  plazaName: string;
+  vehicleType: string;
+  amountDeducted: bigint;
+  balanceBefore: bigint;
+  balanceAfter: bigint;
+  timestamp: bigint;
+}
+
+export interface BalanceEvent {
+  timestamp: bigint;
+  amount: bigint;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: create a fresh actor on demand for mutations.
+// Called directly at tap time — no refs, no shared state, no polling.
+// ---------------------------------------------------------------------------
+
+async function getFreshActor() {
+  return createActorWithConfig(createActor);
+}
 
 // ---------------------------------------------------------------------------
 // Query hooks
@@ -21,7 +66,8 @@ export function useBalance() {
     queryKey: ["balance"],
     queryFn: async () => {
       if (!actor) return 0;
-      const bal = await actor.getBalance();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const bal = await (actor as any).getBalance();
       return Number(bal);
     },
     enabled: !!actor && !isFetching,
@@ -35,7 +81,8 @@ export function useVehicleType() {
     queryKey: ["vehicleType"],
     queryFn: async () => {
       if (!actor) return "Car/Jeep/Van";
-      return actor.getVehicleType();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getVehicleType();
     },
     enabled: !!actor && !isFetching,
   });
@@ -47,10 +94,11 @@ export function useTollPlazas() {
     queryKey: ["tollPlazas"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllTollPlazas();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getAllTollPlazas();
     },
     enabled: !!actor && !isFetching,
-    staleTime: Infinity,
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 
@@ -60,7 +108,8 @@ export function useTransactions() {
     queryKey: ["transactions"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getTransactions();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getTransactions();
     },
     enabled: !!actor && !isFetching,
   });
@@ -72,43 +121,25 @@ export function useBalanceHistory() {
     queryKey: ["balanceHistory"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getBalanceHistory();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getBalanceHistory();
     },
     enabled: !!actor && !isFetching,
   });
 }
 
 // ---------------------------------------------------------------------------
-// Helper: get actor from a ref, or fall back to creating a fresh one.
-// Using a ref means the mutation closure always captures the latest value
-// without needing to query the React Query cache.
-// ---------------------------------------------------------------------------
-
-async function getActor(
-  actorRef: React.MutableRefObject<backendInterface | null>
-): Promise<backendInterface> {
-  if (actorRef.current) return actorRef.current;
-  // Last resort: create a fresh actor (config is cached after first load)
-  const a = await createActorWithConfig();
-  actorRef.current = a;
-  return a;
-}
-
-// ---------------------------------------------------------------------------
-// Mutation hooks -- each uses useActor() so they share the same actor ref
-// that the query hooks use. The actor is stored in a ref so mutations can
-// access it inside closures without stale captures.
+// Mutation hooks — each creates a fresh actor at tap time via createActorWithConfig.
+// This is the only reliable pattern: no refs, no useEffect, no polling.
 // ---------------------------------------------------------------------------
 
 export function useSetVehicleType() {
-  const { actor } = useActor();
-  const actorRef = useRef<backendInterface | null>(actor);
-  actorRef.current = actor;
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (vehicleType: string) => {
-      const a = await getActor(actorRef);
-      await a.setVehicleType(vehicleType);
+      const a = await getFreshActor();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (a as any).setVehicleType(vehicleType);
       return vehicleType;
     },
     onSuccess: (vehicleType) => {
@@ -118,14 +149,12 @@ export function useSetVehicleType() {
 }
 
 export function useSetBalance() {
-  const { actor } = useActor();
-  const actorRef = useRef<backendInterface | null>(actor);
-  actorRef.current = actor;
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (amount: number) => {
-      const a = await getActor(actorRef);
-      await a.setBalance(BigInt(Math.round(amount)));
+      const a = await getFreshActor();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (a as any).setBalance(BigInt(Math.round(amount)));
       return amount;
     },
     onSuccess: (amount) => {
@@ -136,14 +165,12 @@ export function useSetBalance() {
 }
 
 export function useRecharge() {
-  const { actor } = useActor();
-  const actorRef = useRef<backendInterface | null>(actor);
-  actorRef.current = actor;
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (amount: number) => {
-      const a = await getActor(actorRef);
-      const newBal = await a.recharge(BigInt(Math.round(amount)));
+      const a = await getFreshActor();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newBal = await (a as any).recharge(BigInt(Math.round(amount)));
       return Number(newBal);
     },
     onSuccess: (newBal) => {
@@ -154,9 +181,6 @@ export function useRecharge() {
 }
 
 export function useDeductToll() {
-  const { actor } = useActor();
-  const actorRef = useRef<backendInterface | null>(actor);
-  actorRef.current = actor;
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -166,8 +190,9 @@ export function useDeductToll() {
       plazaId: string;
       vehicleType: string;
     }) => {
-      const a = await getActor(actorRef);
-      return a.deductToll(plazaId, vehicleType);
+      const a = await getFreshActor();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (a as any).deductToll(plazaId, vehicleType);
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["balance"] });
@@ -177,14 +202,12 @@ export function useDeductToll() {
 }
 
 export function useAddTollPlaza() {
-  const { actor } = useActor();
-  const actorRef = useRef<backendInterface | null>(actor);
-  actorRef.current = actor;
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (plaza: TollPlaza) => {
-      const a = await getActor(actorRef);
-      await a.addTollPlaza(plaza);
+      const a = await getFreshActor();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (a as any).addTollPlaza(plaza);
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["tollPlazas"] });
@@ -193,19 +216,15 @@ export function useAddTollPlaza() {
 }
 
 export function useClearTransactions() {
-  const { actor } = useActor();
-  const actorRef = useRef<backendInterface | null>(actor);
-  actorRef.current = actor;
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const a = await getActor(actorRef);
-      await a.clearTransactions();
+      const a = await getFreshActor();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (a as any).clearTransactions();
     },
     onSuccess: () => {
       qc.setQueryData(["transactions"], []);
     },
   });
 }
-
-export type { TollPlaza, Transaction, BalanceEvent };

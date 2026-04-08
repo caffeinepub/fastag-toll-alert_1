@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { haversine } from "../utils/haversine";
 
 export interface GeoState {
@@ -86,7 +86,7 @@ export function useGeolocation() {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0, // Always get fresh position — critical for smooth distance countdown
-      }
+      },
     );
 
     return () => {

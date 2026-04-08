@@ -1,11 +1,10 @@
-import React, { useState } from "react";
-import { toast } from "sonner";
-import { Zap, CreditCard, IndianRupee, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CreditCard, IndianRupee, Loader2, Zap } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { useBalance, useRecharge, useSetBalance } from "../hooks/useQueries";
-import { useActor } from "../hooks/useActor";
 
 const QUICK_AMOUNTS = [200, 500, 1000, 2000];
 
@@ -13,21 +12,22 @@ export function RechargeTab() {
   const { data: balance = 0 } = useBalance();
   const rechargeMut = useRecharge();
   const setBalanceMut = useSetBalance();
-  const { actor, isFetching: actorLoading } = useActor();
-  const actorReady = !!actor && !actorLoading;
 
   const [amount, setAmount] = useState("");
   const [setMode, setSetMode] = useState(false);
 
+  // Mutations call createActorWithConfig() directly at tap time — no actor check needed.
   const handleRecharge = async () => {
-    const val = parseFloat(amount);
+    const val = Number.parseFloat(amount);
     if (!val || val <= 0) {
       toast.error("Enter a valid amount");
       return;
     }
     try {
       const newBal = await rechargeMut.mutateAsync(val);
-      toast.success(`Recharged ₹${val.toLocaleString("en-IN")}. New balance: ₹${newBal.toLocaleString("en-IN")}`);
+      toast.success(
+        `Recharged ₹${val.toLocaleString("en-IN")}. New balance: ₹${newBal.toLocaleString("en-IN")}`,
+      );
       setAmount("");
     } catch (err) {
       console.error("Recharge error:", err);
@@ -36,8 +36,8 @@ export function RechargeTab() {
   };
 
   const handleSetBalance = async () => {
-    const val = parseFloat(amount);
-    if (val === undefined || isNaN(val) || val < 0) {
+    const val = Number.parseFloat(amount);
+    if (val === undefined || Number.isNaN(val) || val < 0) {
       toast.error("Enter a valid balance");
       return;
     }
@@ -52,18 +52,23 @@ export function RechargeTab() {
   };
 
   const isPending = rechargeMut.isPending || setBalanceMut.isPending;
+  // Button enabled as long as an amount is entered — no "Connecting..." gate
+  const hasAmount = amount.trim() !== "" && Number.parseFloat(amount) > 0;
 
   const balanceColor =
-    balance > 500
+    balance >= 500
       ? "oklch(0.72 0.2 145)"
-      : balance > 100
-      ? "oklch(0.78 0.18 75)"
-      : "oklch(0.65 0.24 25)";
+      : balance >= 200
+        ? "oklch(0.78 0.18 75)"
+        : "oklch(0.65 0.24 25)";
 
   return (
     <div className="flex flex-col gap-4 pb-4">
       {/* Current Balance */}
-      <div className="card-glass rounded-xl p-5 border-glow-cyan text-center">
+      <div
+        className="card-glass rounded-xl p-5 border-glow-cyan text-center"
+        data-ocid="balance-display"
+      >
         <div className="flex items-center justify-center gap-2 mb-1">
           <CreditCard className="w-4 h-4 text-muted-foreground" />
           <span className="text-xs font-rajdhani tracking-widest text-muted-foreground uppercase">
@@ -73,7 +78,7 @@ export function RechargeTab() {
         <div
           className="font-mono-jb text-6xl font-bold"
           style={{
-            color: `oklch(var(--foreground))`,
+            color: "oklch(var(--foreground))",
             textShadow: `0 0 20px ${balanceColor}`,
           }}
         >
@@ -81,18 +86,24 @@ export function RechargeTab() {
         </div>
         <div
           className="mt-3 text-sm"
-          style={{ color: balance < 100 ? "oklch(0.65 0.24 25)" : "oklch(0.5 0.02 240)" }}
+          style={{
+            color:
+              balance < 200 ? "oklch(0.65 0.24 25)" : "oklch(0.5 0.02 240)",
+          }}
         >
-          {balance < 100
+          {balance < 200
             ? "⚠ Balance critically low — recharge now"
             : balance < 500
-            ? "Balance getting low"
-            : "Balance is sufficient"}
+              ? "Balance getting low"
+              : "Balance is sufficient"}
         </div>
       </div>
 
       {/* Mode Toggle */}
-      <div className="card-glass rounded-xl p-1 flex border border-border/50">
+      <div
+        className="card-glass rounded-xl p-1 flex border border-border/50"
+        data-ocid="mode-toggle"
+      >
         <button
           type="button"
           onClick={() => setSetMode(false)}
@@ -136,6 +147,7 @@ export function RechargeTab() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="pl-8 font-mono-jb text-xl h-14 bg-secondary/50 border-border/60 text-foreground placeholder:text-muted-foreground/50"
+            data-ocid="amount-input"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 if (setMode) {
@@ -161,6 +173,7 @@ export function RechargeTab() {
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border/40 bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground"
                 }`}
+                data-ocid={`quick-amount-${qa}`}
               >
                 ₹{qa}
               </button>
@@ -168,17 +181,14 @@ export function RechargeTab() {
           </div>
         )}
 
+        {/* Action Button — always enabled when amount is entered */}
         <Button
           onClick={setMode ? handleSetBalance : handleRecharge}
-          disabled={isPending || !amount || !actorReady}
+          disabled={isPending || !hasAmount}
           className="mt-4 w-full h-12 font-rajdhani text-base font-bold tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+          data-ocid={setMode ? "set-balance-btn" : "recharge-btn"}
         >
-          {!actorReady ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              CONNECTING...
-            </>
-          ) : isPending ? (
+          {isPending ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
               {setMode ? "Updating..." : "Recharging..."}
@@ -204,12 +214,27 @@ export function RechargeTab() {
         </div>
         <ul className="space-y-2">
           {[
-            { id: "tip1", text: "Recharge adds amount to your current balance" },
-            { id: "tip2", text: "Set Balance updates your balance to exact amount (after bank recharge)" },
-            { id: "tip3", text: "Balance auto-deducted when crossing toll plazas" },
-            { id: "tip4", text: "Beep alert activates within 5km if balance is low" },
+            {
+              id: "tip1",
+              text: "Recharge adds amount to your current balance",
+            },
+            {
+              id: "tip2",
+              text: "Set Balance updates your balance to exact amount (after bank recharge)",
+            },
+            {
+              id: "tip3",
+              text: "Balance auto-deducted when crossing toll plazas",
+            },
+            {
+              id: "tip4",
+              text: "Beep alert activates within 5km only if balance is insufficient",
+            },
           ].map((item) => (
-            <li key={item.id} className="flex items-start gap-2 text-sm text-muted-foreground">
+            <li
+              key={item.id}
+              className="flex items-start gap-2 text-sm text-muted-foreground"
+            >
               <span className="text-primary mt-0.5">›</span>
               {item.text}
             </li>

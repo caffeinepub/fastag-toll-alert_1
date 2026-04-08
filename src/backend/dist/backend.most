@@ -1,0 +1,87 @@
+// Version: 1.0.0
+type BalanceEvent__932684407 = {amount : Nat; timestamp : Int};
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type TollPlaza__442604775 =
+  {
+    highway : Text;
+    id : Text;
+    latitude : Float;
+    longitude : Float;
+    name : Text;
+    tollRates : TollRates__218944867
+  };
+type TollRates__218944867 =
+  {
+    busTruck : Nat;
+    carJeepVan : Nat;
+    lcv : Nat;
+    mav : Nat;
+    multiAxle : Nat;
+    oversized : Nat
+  };
+type Transaction__865268250 =
+  {
+    amountDeducted : Nat;
+    balanceAfter : Nat;
+    balanceBefore : Nat;
+    plazaId : Text;
+    plazaName : Text;
+    timestamp : Int;
+    vehicleType : Text
+  };
+actor {
+  stable var balance : Nat;
+  stable var balanceHistory :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?BalanceEvent__932684407]];
+      var elementIndex : Nat__490723111
+    };
+  stable var pBalanceHistory :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?BalanceEvent__932684407]];
+      var elementIndex : Nat__490723111
+    };
+  stable var pTollPlazas :
+    {
+      var root : Node__46230540<Text, TollPlaza__442604775>;
+      var size : Nat__490723111
+    };
+  stable var pTransactionHistory :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?Transaction__865268250]];
+      var elementIndex : Nat__490723111
+    };
+  stable pallikondaPlaza :
+    {
+      highway : Text;
+      id : Text;
+      latitude : Float;
+      longitude : Float;
+      name : Text;
+      tollRates : TollRates__218944867
+    };
+  stable var tollPlazas :
+    {
+      var root : Node__46230540<Text, TollPlaza__442604775>;
+      var size : Nat__490723111
+    };
+  stable var transactionHistory :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?Transaction__865268250]];
+      var elementIndex : Nat__490723111
+    };
+  stable var vehicleType : Text;
+  stable vehicleTypes : [Text]
+};

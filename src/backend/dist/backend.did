@@ -1,0 +1,47 @@
+type Transaction = 
+ record {
+   amountDeducted: nat;
+   balanceAfter: nat;
+   balanceBefore: nat;
+   plazaId: text;
+   plazaName: text;
+   timestamp: int;
+   vehicleType: text;
+ };
+type TollRates = 
+ record {
+   busTruck: nat;
+   carJeepVan: nat;
+   lcv: nat;
+   mav: nat;
+   multiAxle: nat;
+   oversized: nat;
+ };
+type TollPlaza = 
+ record {
+   highway: text;
+   id: text;
+   latitude: float64;
+   longitude: float64;
+   name: text;
+   tollRates: TollRates;
+ };
+type BalanceEvent = 
+ record {
+   amount: nat;
+   timestamp: int;
+ };
+service : {
+  addTollPlaza: (plaza: TollPlaza) -> ();
+  clearTransactions: () -> ();
+  deductToll: (plazaId: text, vehicleType: text) -> (bool);
+  getAllTollPlazas: () -> (vec TollPlaza) query;
+  getBalance: () -> (nat) query;
+  getBalanceHistory: () -> (vec BalanceEvent) query;
+  getTollPlaza: (id: text) -> (TollPlaza) query;
+  getTransactions: () -> (vec Transaction) query;
+  getVehicleType: () -> (text) query;
+  recharge: (amount: nat) -> (nat);
+  setBalance: (newBalance: nat) -> ();
+  setVehicleType: (newVehicleType: text) -> ();
+}

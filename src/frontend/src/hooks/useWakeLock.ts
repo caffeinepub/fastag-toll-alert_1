@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Requests a Screen Wake Lock so the browser doesn't dim/sleep
@@ -16,11 +16,17 @@ export function useWakeLock() {
     try {
       // Release any stale lock first
       if (wakeLockRef.current) {
-        try { await wakeLockRef.current.release(); } catch (_) {}
+        try {
+          await wakeLockRef.current.release();
+        } catch (_) {}
         wakeLockRef.current = null;
       }
-      type WakeLockNav = Navigator & { wakeLock: { request(type: string): Promise<WakeLockSentinel> } };
-      wakeLockRef.current = await (navigator as WakeLockNav).wakeLock.request("screen");
+      type WakeLockNav = Navigator & {
+        wakeLock: { request(type: string): Promise<WakeLockSentinel> };
+      };
+      wakeLockRef.current = await (navigator as WakeLockNav).wakeLock.request(
+        "screen",
+      );
       setIsActive(true);
       wakeLockRef.current.addEventListener("release", () => {
         setIsActive(false);
